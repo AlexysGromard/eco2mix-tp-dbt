@@ -1,0 +1,8 @@
+sources:
+  - name: parquet_file
+    meta:
+      external_location: "models/data/eco2mix-regional-cons-def.parquet"
+    tables:
+      - name: eco2mix-regional-cons-def
+      - name: eco2mix-regional-tr
+      - name: temperature-quotidienne-regionale
