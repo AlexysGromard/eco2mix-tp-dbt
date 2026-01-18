@@ -1,12 +1,12 @@
 # Eco2mix - Projet dbt
 
-Projet d'analyse des données éco2mix avec dbt et Evidence.
+Projet d'analyse des données éco2mix avec dbt et DuckDB.
 
 ## Prérequis
 
 - Python 3.11+
-- Node.js 20 (utiliser `nvm use` dans le dossier `reports/`)
 - dbt-duckdb
+- DuckDB CLI
 
 ## Installation
 
@@ -17,11 +17,6 @@ source .venv/bin/activate
 
 # Installer les dépendances Python
 pip install -r requirements.txt
-
-# Installer les dépendances Evidence
-cd reports
-nvm use
-npm install
 ```
 
 ## Commandes dbt
@@ -38,23 +33,14 @@ dbt docs generate
 dbt docs serve
 ```
 
-## Evidence (Dashboard BI)
+## DuckDB
 
 ```bash
-# Aller dans le dossier reports
-cd reports
-
-# Utiliser la bonne version de Node
-nvm use
-
-# Générer les sources de données
-npx evidence sources
-
-# Lancer le serveur de développement
-npx evidence dev
+# Lancer DuckDB en mode interactif
+duckdb eco2mix.duckdb -ui
 ```
 
-L'interface Evidence sera accessible sur http://localhost:3000
+L'interface web DuckDB sera accessible sur http://localhost:8080
 
 ## Structure du projet
 
@@ -62,9 +48,6 @@ L'interface Evidence sera accessible sur http://localhost:3000
 ├── models/           # Modèles dbt
 │   ├── staging/      # Modèles de staging
 │   └── intermediate/ # Modèles intermédiaires
-├── reports/          # Dashboard Evidence
-│   ├── pages/        # Pages du dashboard
-│   └── sources/      # Sources de données
 ├── seeds/            # Données statiques
 ├── tests/            # Tests personnalisés
 └── eco2mix.duckdb    # Base de données DuckDB
