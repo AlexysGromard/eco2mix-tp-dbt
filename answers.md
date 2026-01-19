@@ -111,3 +111,159 @@ ORDER BY
     )) DESC
 LIMIT 20;
 ```
+
+5. __Quantité cumulée__ (_window functions_ + _CTE_) : jour du dépassement des énergies renouvelables, pour chaque année (de 2013 à 2024). En d'autres termes, à quel moment de l'année (une date) la consommation atteint - dépasse - la production annuelle totale des filières renouvelables ?
+
+```sql
+-- Q5
+WITH production_annuelle_renouvelable AS (
+    SELECT
+        EXTRACT(YEAR FROM date_heure) AS annee,
+        SUM(solaire + hydraulique + pompage + bioenergies + eolien) / 1000 AS production_renouvelable_annuelle_GWh
+    FROM
+        eco2mix.eco2mix_cleaned
+    GROUP BY
+        annee
+),
+consommation_cumulee AS (
+    SELECT
+        DATE_TRUNC('day', date_heure) AS jour,
+        EXTRACT(YEAR FROM date_heure) AS annee,
+        SUM(SUM(consommation)) OVER (
+            PARTITION BY EXTRACT(YEAR FROM date_heure)
+            ORDER BY DATE_TRUNC('day', date_heure)
+        ) / 1000 AS consommation_cumulee_GWh
+    FROM
+        eco2mix.eco2mix_cleaned
+    GROUP BY
+        jour,
+        annee
+)
+SELECT
+    cc.annee,
+    MIN(cc.jour) AS date_depassement,
+    par.production_renouvelable_annuelle_GWh,
+    MIN(cc.consommation_cumulee_GWh) AS consommation_cumulee_au_depassement_GWh
+FROM
+    consommation_cumulee cc
+JOIN
+    production_annuelle_renouvelable par ON cc.annee = par.annee
+WHERE
+    cc.consommation_cumulee_GWh >= par.production_renouvelable_annuelle_GWh
+GROUP BY
+    cc.annee,
+    par.production_renouvelable_annuelle_GWh
+ORDER BY
+    cc.annee;
+```
+
+6. __Calcul de point fixe__ (_CTE récursive_) : trouver toutes les périodes correspondant aux 3 plus longues séquences d'augmentation de la consommation instantanée.
+
+```sql
+-- Q6
+WITH RECURSIVE donnees_avec_marqueur AS (
+    SELECT
+        date_heure,
+        libelle_region,
+        consommation,
+        LAG(consommation) OVER (PARTITION BY libelle_region ORDER BY date_heure) AS consommation_precedente,
+        CASE 
+            WHEN LAG(consommation) OVER (PARTITION BY libelle_region ORDER BY date_heure) IS NULL THEN 1
+            WHEN consommation <= LAG(consommation) OVER (PARTITION BY libelle_region ORDER BY date_heure) THEN 1
+            ELSE 0
+        END AS debut_groupe
+    FROM
+        eco2mix.eco2mix_cleaned
+),
+groupes_identifies AS (
+    SELECT
+        date_heure,
+        libelle_region,
+        consommation,
+        consommation_precedente,
+        SUM(debut_groupe) OVER (PARTITION BY libelle_region ORDER BY date_heure) AS groupe_id
+    FROM
+        donnees_avec_marqueur
+),
+sequences_completes AS (
+    SELECT
+        MIN(date_heure) AS debut_sequence,
+        MAX(date_heure) AS fin_sequence,
+        libelle_region,
+        COUNT(*) AS longueur,
+        MAX(date_heure) - MIN(date_heure) AS duree,
+        '[' || STRING_AGG(CAST(consommation AS VARCHAR), ', ' ORDER BY date_heure) || ']' AS sequence_valeurs
+    FROM
+        groupes_identifies
+    WHERE
+        consommation > consommation_precedente
+    GROUP BY
+        libelle_region,
+        groupe_id
+    HAVING
+        COUNT(*) > 1  
+)
+SELECT
+    debut_sequence AS "Date - Heure",
+    duree AS "Durée (hh:mm:ss)",
+    libelle_region AS "Région",
+    sequence_valeurs AS "Séquence (MW*)",
+    ROW_NUMBER() OVER (ORDER BY longueur DESC, duree DESC) AS "Rang"
+FROM
+    sequences_completes
+ORDER BY
+    longueur DESC,
+    duree DESC
+LIMIT 3;
+```
+
+7. __Construction du cube__ (`GROUP BY CUBE|GROUPING SETS|ROLLUP`) : donner toutes les valeurs de consommation (en GWh) agrégés par jour, par mois, par année et sur toute la période, ainsi que par région, par zone (NO, NE, SO, SE et IdF) et sur l'ensemble du territoire métropolitain.
+
+// TODO : A VÉRIFIER : LA REQUÊTE CI-DESSOUS NE SEMBLE PAS RESPECTER PLEINEMENT LE SUJET
+
+```sql
+-- Q7
+WITH donnees_enrichies AS (
+    SELECT
+        EXTRACT(DAY FROM date_heure) AS jour,
+        EXTRACT(MONTH FROM date_heure) AS mois,
+        EXTRACT(YEAR FROM date_heure) AS annee,
+        libelle_region,
+        CASE 
+            WHEN libelle_region IN ('Bretagne', 'Normandie', 'Pays de la Loire', 'Centre-Val de Loire') THEN 'NO'
+            WHEN libelle_region IN ('Hauts-de-France', 'Grand Est', 'Bourgogne-Franche-Comté') THEN 'NE'
+            WHEN libelle_region IN ('Nouvelle-Aquitaine', 'Occitanie') THEN 'SO'
+            WHEN libelle_region IN ('Auvergne-Rhône-Alpes', 'Provence-Alpes-Côte d''Azur') THEN 'SE'
+            WHEN libelle_region = 'Île-de-France' THEN 'IdF'
+            ELSE 'Autre'
+        END AS zone,
+        consommation
+    FROM
+        eco2mix.eco2mix_cleaned
+)
+SELECT
+    jour,
+    mois,
+    annee,
+    libelle_region,
+    zone,
+    ROUND(SUM(consommation) / 1000, 2) AS "Consommation (GWh)",
+    -- Indicateurs de niveau d'agrégation
+    GROUPING(jour) AS grouping_jour,
+    GROUPING(mois) AS grouping_mois,
+    GROUPING(annee) AS grouping_annee,
+    GROUPING(libelle_region) AS grouping_region,
+    GROUPING(zone) AS grouping_zone
+FROM
+    donnees_enrichies
+GROUP BY CUBE (
+    (jour, mois, annee),
+    (libelle_region, zone)
+)
+ORDER BY
+    annee NULLS LAST,
+    mois NULLS LAST,
+    jour NULLS LAST,
+    zone NULLS LAST,
+    libelle_region NULLS LAST;
+```
