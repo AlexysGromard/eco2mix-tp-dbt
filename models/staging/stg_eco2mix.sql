@@ -16,5 +16,5 @@ CASE
     WHEN eolien = '-' THEN NULL
     ELSE CAST(eolien AS INT)
 END AS eolien
-FROM {{ ref('eco2mix_raw') }}
+FROM {{ source('parquet_file', 'eco2mix-regional-cons-def') }}
 WHERE consommation IS NOT NULL
