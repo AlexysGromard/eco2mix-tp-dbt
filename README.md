@@ -46,9 +46,11 @@ L'interface web DuckDB sera accessible sur http://localhost:8080
 
 ```
 ├── models/           # Modèles dbt
+|   ├── dim/          # Modèles de la couche dimensionnelle
+|   ├── mart/         # Modèles de la couche mart
 │   ├── staging/      # Modèles de staging
 │   └── intermediate/ # Modèles intermédiaires
-├── seeds/            # Données statiques
+├── analyses/         # Requêtes analytiques
 ├── tests/            # Tests personnalisés
 └── eco2mix.duckdb    # Base de données DuckDB
 ```
