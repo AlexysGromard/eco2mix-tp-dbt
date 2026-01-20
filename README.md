@@ -1,10 +1,26 @@
-# Eco2mix - Projet dbt
+# 📊 Eco2mix - Analyse de données énergétiques
 
-Projet d'analyse des données éco2mix avec dbt et DuckDB.
+## 🎯 À propos
+
+Projet d'analyse et de modélisation des données de production et consommation électrique en France métropolitaine, développé dans le cadre du TP **SQL avancé et entrepôts de données**.
+
+Ce projet implémente un **Data Warehouse** complet avec :
+- 🔧 **dbt-core** pour la transformation et la modélisation des données
+- 🦆 **DuckDB** comme moteur analytique OLAP haute performance  
+- ⭐ **Schéma en étoile** multi-dimensionnel (temps, géographie, température)
+- 📈 **Requêtes SQL avancées** (window functions, CTE récursives, CUBE/ROLLUP)
+
+> Malgré de nombreuses tentatives, nous n'avons pas réussi à faire fonctionner evidence.
+
+### 📊 Données sources
+- **éCO2mix régional consolidé** : production et consommation électrique par région (2013-2024)
+- **Températures quotidiennes** : relevés météorologiques régionaux (2016-2024)
+- **12+ ans d'historique** : millions de points de mesure consolidés
 
 ## Prérequis
 
 - Python 3.11+
+- dbt-core
 - dbt-duckdb
 - DuckDB CLI
 
@@ -13,10 +29,26 @@ Projet d'analyse des données éco2mix avec dbt et DuckDB.
 ```bash
 # Créer et activer l'environnement virtuel Python
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # macOS/Linux
+# ou .venv\Scripts\activate  # Windows
 
 # Installer les dépendances Python
 pip install -r requirements.txt
+```
+
+## Configuration
+
+Le projet utilise DuckDB comme base de données. La configuration se fait dans le fichier `~/.dbt/profiles.yml` :
+
+```yaml
+eco2mix:
+  outputs:
+    dev:
+      type: duckdb
+      path: eco2mix.duckdb
+      extensions:
+        - parquet
+  target: dev
 ```
 
 ## Commandes dbt
@@ -31,12 +63,18 @@ dbt test
 # Générer la documentation
 dbt docs generate
 dbt docs serve
+
+# Compiler les modèles SQL en fichiers .sql
+dbt compile
 ```
 
 ## DuckDB
 
 ```bash
 # Lancer DuckDB en mode interactif
+duckdb eco2mix.duckdb
+
+# Lancer DuckDB avec interface web
 duckdb eco2mix.duckdb -ui
 ```
 
@@ -46,11 +84,63 @@ L'interface web DuckDB sera accessible sur http://localhost:8080
 
 ```
 ├── models/           # Modèles dbt
-|   ├── dim/          # Modèles de la couche dimensionnelle
-|   ├── mart/         # Modèles de la couche mart
-│   ├── staging/      # Modèles de staging
-│   └── intermediate/ # Modèles intermédiaires
-├── analyses/         # Requêtes analytiques
+│   ├── staging/      # Couche de staging (sources brutes)
+│   ├── intermediate/ # Couche intermédiaire (transformations)
+│   ├── dim/          # Tables de dimensions
+│   └── mart/         # Tables de faits (schéma en étoile)
+├── analyses/         # Requêtes analytiques SQL avancées
+├── seeds/            # Données statiques
 ├── tests/            # Tests personnalisés
+├── macros/           # Macros Jinja réutilisables
 └── eco2mix.duckdb    # Base de données DuckDB
 ```
+
+## Analyses SQL avancées
+
+Les requêtes SQL avancées répondant aux questions du sujet se trouvent dans le dossier [`analyses/`](analyses/) :
+
+### Section 3 - Exploration
+
+1. **[Groupement et agrégation simples](analyses/01_groupement_aggregation.sql)** : Production et consommation (GWh) avec min/max/moyenne instantanées (MW), par mois et par région
+
+2. **[Pivot](analyses/02_pivot_consommation.sql)** : Consommation journalière détaillée par région (format pivot avec une colonne par région)
+
+3. **[Fenêtre glissante](analyses/03_fenetre_glissante.sql)** : Consommation régionale sur 30 jours glissants avec window functions
+
+4. **[Variation](analyses/04_variation_consommation.sql)** : Top 20 des plus grands écarts de consommation quotidienne d'un jour à l'autre
+
+5. **[Quantité cumulée](analyses/05_quantite_cumulee.sql)** : Date de dépassement de la production renouvelable annuelle par la consommation
+
+6. **[Calcul de point fixe](analyses/06_calcul_point_fixe.sql)** : Les 3 plus longues séquences d'augmentation de consommation instantanée (CTE récursive)
+
+7. **Construction du cube** : Consommation agrégée par dimensions temporelles et géographiques
+   - [7a - ROLLUP](analyses/07a_cuboide_rollup.sql)
+   - [7b - GROUPING SETS](analyses/07b_cuboide_grouping_sets.sql)
+   - [7c - CUBE](analyses/07c_cuboide_cube.sql)
+
+### Section 4 - Entrepôt de données
+
+Le cuboïde par mois, quart et intervalle de température se trouve dans :
+- **[Cuboïde mois/quart/température](analyses/cuboide_avec_grouping_sets.sql)**
+
+## Schéma en étoile
+
+Le projet implémente un schéma en étoile multi-dimensionnel avec :
+
+### Tables de dimensions
+- **[dim_temps](models/dim/dim_temps.sql)** : Dimension temporelle (jour, mois, saison, année)
+- **[dim_geographie](models/dim/dim_geographie.sql)** : Dimension géographique (région, zone, pays)
+- **[dim_temperature](models/dim/dim_temperature.sql)** : Dimension température (intervalle de température)
+
+### Table de faits
+- **[fact_energie_quotidienne](models/mart/fact_energie_quotidienne.sql)** : Mesures quotidiennes de production et consommation par région
+
+## Sources de données
+
+- [éCO2mix régional consolidé et définitif](https://odre.opendatasoft.com/explore/dataset/eco2mix-regional-cons-def/) (2013-2024)
+- [Température quotidienne régionale](https://odre.opendatasoft.com/explore/dataset/temperature-quotidienne-regionale/) (2016-2024)
+- [éCO2mix régional temps réel](https://odre.opendatasoft.com/explore/dataset/eco2mix-regional-tr/) (pour mises à jour incrémentales)
+
+## Documentation complète
+
+Le sujet complet du TP est disponible dans [sujet_eco2mix_dbt_part2.md](sujet_eco2mix_dbt_part2.md).
