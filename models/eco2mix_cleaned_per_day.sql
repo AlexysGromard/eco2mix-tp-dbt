@@ -1,3 +1,3 @@
 {{ config(materialized='table') }}
 
-SELECT * FROM {{ ref('int_eco2mix_tco_tch_corrected') }}
+SELECT * FROM {{ ref('int_eco2mix_cleaned_per_day') }}
