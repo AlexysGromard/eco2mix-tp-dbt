@@ -338,3 +338,7 @@ ORDER BY
     zone NULLS LAST,
     libelle_region NULLS LAST;
 ```
+
+## 4. De la zone de transit à l'entrepôt
+### Cuboïde
+La requête du cuboïde se trouve dans le fichier `analyses/cuboide_avec_grouping_sets.sql`.
