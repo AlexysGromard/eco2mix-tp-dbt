@@ -1,8 +1,16 @@
 sources:
-  - name: parquet_file
+  - name: eco2mix_raw
+    description: "Données brutes eco2mix sur la consommation et production d'énergie par région"
     meta:
       external_location: "models/data/eco2mix-regional-cons-def.parquet"
     tables:
-      - name: eco2mix-regional-cons-def
-      - name: eco2mix-regional-tr
-      - name: temperature-quotidienne-regionale
+      - name: regional_cons_def
+        description: "Consommation et production d'énergie régionale définitive"
+
+  - name: temperature_raw
+    description: "Données brutes de température quotidienne par région"
+    meta:
+      external_location: "models/data/temperature-quotidienne-regionale.parquet"
+    tables:
+      - name: quotidienne_regionale
+        description: "Température quotidienne par région"
