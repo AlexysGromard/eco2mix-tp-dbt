@@ -219,16 +219,13 @@ LIMIT 3;
 
 7. __Construction du cube__ (`GROUP BY CUBE|GROUPING SETS|ROLLUP`) : donner toutes les valeurs de consommation (en GWh) agrégés par jour, par mois, par année et sur toute la période, ainsi que par région, par zone (NO, NE, SO, SE et IdF) et sur l'ensemble du territoire métropolitain.
 
-// TODO : A VÉRIFIER : LA REQUÊTE CI-DESSOUS NE SEMBLE PAS RESPECTER PLEINEMENT LE SUJET
-
 ```sql
--- Q7
+-- Q7 WITH ROLLUP
 WITH donnees_enrichies AS (
     SELECT
-        EXTRACT(DAY FROM date_heure) AS jour,
-        EXTRACT(MONTH FROM date_heure) AS mois,
-        EXTRACT(YEAR FROM date_heure) AS annee,
-        libelle_region,
+        STRFTIME(date_heure, '%Y-%m-%d') AS jour,                      
+        STRFTIME(date_heure, '%Y-%m') AS mois,
+        STRFTIME(date_heure, '%Y') AS annee, 
         CASE 
             WHEN libelle_region IN ('Bretagne', 'Normandie', 'Pays de la Loire', 'Centre-Val de Loire') THEN 'NO'
             WHEN libelle_region IN ('Hauts-de-France', 'Grand Est', 'Bourgogne-Franche-Comté') THEN 'NE'
@@ -237,29 +234,103 @@ WITH donnees_enrichies AS (
             WHEN libelle_region = 'Île-de-France' THEN 'IdF'
             ELSE 'Autre'
         END AS zone,
+        libelle_region,
         consommation
     FROM
         eco2mix.eco2mix_cleaned
 )
 SELECT
-    jour,
-    mois,
     annee,
-    libelle_region,
+    mois,
+    jour,
     zone,
-    ROUND(SUM(consommation) / 1000, 2) AS "Consommation (GWh)",
-    -- Indicateurs de niveau d'agrégation
-    GROUPING(jour) AS grouping_jour,
-    GROUPING(mois) AS grouping_mois,
-    GROUPING(annee) AS grouping_annee,
-    GROUPING(libelle_region) AS grouping_region,
-    GROUPING(zone) AS grouping_zone
+    libelle_region,
+    ROUND(SUM(consommation) / 1000, 2) AS "Consommation (GWh)"
 FROM
     donnees_enrichies
-GROUP BY CUBE (
-    (jour, mois, annee),
-    (libelle_region, zone)
+GROUP BY ROLLUP (annee, mois, jour, zone, libelle_region)
+ORDER BY
+    annee NULLS LAST,
+    mois NULLS LAST,
+    jour NULLS LAST,
+    zone NULLS LAST,
+    libelle_region NULLS LAST;
+```
+
+```sql
+-- Q7 WITH GROUPING SETS
+WITH donnees_enrichies AS (
+    SELECT
+        STRFTIME(date_heure, '%Y-%m-%d') AS jour,                      
+        STRFTIME(date_heure, '%Y-%m') AS mois,
+        STRFTIME(date_heure, '%Y') AS annee, 
+        CASE 
+            WHEN libelle_region IN ('Bretagne', 'Normandie', 'Pays de la Loire', 'Centre-Val de Loire') THEN 'NO'
+            WHEN libelle_region IN ('Hauts-de-France', 'Grand Est', 'Bourgogne-Franche-Comté') THEN 'NE'
+            WHEN libelle_region IN ('Nouvelle-Aquitaine', 'Occitanie') THEN 'SO'
+            WHEN libelle_region IN ('Auvergne-Rhône-Alpes', 'Provence-Alpes-Côte d''Azur') THEN 'SE'
+            WHEN libelle_region = 'Île-de-France' THEN 'IdF'
+            ELSE 'Autre'
+        END AS zone,
+        libelle_region,
+        consommation
+    FROM
+        eco2mix.eco2mix_cleaned
 )
+SELECT
+    annee,
+    mois,
+    jour,
+    zone,
+    libelle_region,
+    ROUND(SUM(consommation) / 1000, 2) AS "Consommation (GWh)"
+FROM
+    donnees_enrichies
+GROUP BY GROUPING SETS (
+    (annee),
+    (annee, mois),
+    (annee, mois, jour),
+    (annee, mois, jour, zone),
+    (annee, mois, jour, zone, libelle_region)
+)
+ORDER BY
+    annee NULLS LAST,
+    mois NULLS LAST,
+    jour NULLS LAST,
+    zone NULLS LAST,
+    libelle_region NULLS LAST;
+```
+
+```sql
+-- Q7 WITH GROUP BY CUBE
+WITH donnees_enrichies AS (
+    SELECT
+        STRFTIME(date_heure, '%Y-%m-%d') AS jour,                      
+        STRFTIME(date_heure, '%Y-%m') AS mois,
+        STRFTIME(date_heure, '%Y') AS annee, 
+        CASE 
+            WHEN libelle_region IN ('Bretagne', 'Normandie', 'Pays de la Loire', 'Centre-Val de Loire') THEN 'NO'
+            WHEN libelle_region IN ('Hauts-de-France', 'Grand Est', 'Bourgogne-Franche-Comté') THEN 'NE'
+            WHEN libelle_region IN ('Nouvelle-Aquitaine', 'Occitanie') THEN 'SO'
+            WHEN libelle_region IN ('Auvergne-Rhône-Alpes', 'Provence-Alpes-Côte d''Azur') THEN 'SE'
+            WHEN libelle_region = 'Île-de-France' THEN 'IdF'
+            ELSE 'Autre'
+        END AS zone,
+        libelle_region,
+        consommation
+    FROM
+        eco2mix.eco2mix_cleaned
+)
+SELECT
+    annee,
+    mois,
+    jour,
+    zone,
+    libelle_region,
+    ROUND(SUM(consommation) / 1000, 2) AS "Consommation (GWh)"
+FROM
+    donnees_enrichies
+GROUP BY CUBE (annee, mois, jour, zone, libelle_region)
 ORDER BY
     annee NULLS LAST,
     mois NULLS LAST,
