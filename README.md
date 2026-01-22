@@ -60,12 +60,42 @@ dbt run
 # Lancer les tests
 dbt test
 
+# Lancer les tests pour un modèle spécifique
+dbt test --select stg_eco2mix
+dbt test --select dim_temps
+dbt test --select fact_energie_quotidienne
+
 # Générer la documentation
 dbt docs generate
 dbt docs serve
 
 # Compiler les modèles SQL en fichiers .sql
 dbt compile
+```
+
+## Tests
+
+Le projet contient des tests de qualité de données pour garantir l'intégrité :
+
+### Tests implémentés
+- **Tests d'unicité** : Clés primaires des dimensions (id_temps, id_geographie, id_temperature)
+- **Tests de non-nullité** : Colonnes essentielles (dates, codes région, mesures)
+- **Tests de relations** : Intégrité référentielle entre faits et dimensions
+- **Tests de valeurs acceptées** : Validation des statuts de données (temps_reel, consolidee, definitive)
+
+### Lancer les tests
+
+```bash
+# Tous les tests
+dbt test
+
+# Tests par couche
+dbt test --select staging.*
+dbt test --select dim.*
+dbt test --select mart.*
+
+# Tests avec détails en cas d'échec
+dbt test --store-failures
 ```
 
 ## DuckDB

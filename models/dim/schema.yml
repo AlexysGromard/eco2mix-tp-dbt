@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: dim_temps
+    description: "Dimension temporelle - jours, mois, années, saisons"
+    columns:
+      - name: id_temps
+        description: "Clé primaire de la dimension temps"
+        tests:
+          - unique
+          - not_null
+      - name: date
+        description: "Date"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_geographie
+    description: "Dimension géographique - régions, zones, pays"
+    columns:
+      - name: id_geographie
+        description: "Clé primaire de la dimension géographie"
+        tests:
+          - unique
+          - not_null
+      - name: code_insee_region
+        description: "Code INSEE de la région"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_temperature
+    description: "Dimension température - intervalles de température"
+    columns:
+      - name: id_temperature
+        description: "Clé primaire de la dimension température"
+        tests:
+          - unique
+          - not_null
+      - name: temperature_degre
+        description: "Température arrondie au degré"
+        tests:
+          - unique
+          - not_null

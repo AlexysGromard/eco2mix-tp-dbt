@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: fact_energie_quotidienne
+    description: "Table de faits - mesures quotidiennes de production et consommation"
+    columns:
+      - name: id_temps
+        description: "Clé étrangère vers dim_temps"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_temps')
+              field: id_temps
+      - name: id_geographie
+        description: "Clé étrangère vers dim_geographie"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_geographie')
+              field: id_geographie
+      - name: consommation_gwh
+        description: "Consommation en GWh"
+        tests:
+          - not_null
+      - name: production_gwh
+        description: "Production en GWh"
+        tests:
+          - not_null
+
+  - name: fact_energie_quotidienne_incremental
+    description: "Table de faits incrémentale avec gestion des statuts"
+    columns:
+      - name: id_temps
+        description: "Clé étrangère vers dim_temps"
+      - name: id_geographie
+        description: "Clé étrangère vers dim_geographie"
+      - name: statut_donnee
+        description: "Statut de la donnée (temps_reel, consolidee, definitive)"
+        tests:
+          - accepted_values:
+              values: ['temps_reel', 'consolidee', 'definitive']

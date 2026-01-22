@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: stg_eco2mix
+    description: "Données eco2mix nettoyées - consommation et production par région"
+    columns:
+      - name: date_heure
+        description: "Date et heure de la mesure"
+        tests:
+          - not_null
+      - name: code_insee_region
+        description: "Code INSEE de la région"
+        tests:
+          - not_null
+      - name: consommation
+        description: "Consommation électrique en MW"
+        tests:
+          - not_null
+
+  - name: stg_temp_quot_reg
+    description: "Températures quotidiennes par région"
+    columns:
+      - name: date
+        description: "Date de la mesure"
+        tests:
+          - not_null
+      - name: code_insee_region
+        description: "Code INSEE de la région"
+        tests:
+          - not_null
+      - name: tmoy
+        description: "Température moyenne"
+        tests:
+          - not_null
