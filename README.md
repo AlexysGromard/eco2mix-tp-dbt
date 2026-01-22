@@ -141,6 +141,78 @@ Le projet implémente un schéma en étoile multi-dimensionnel avec :
 - [Température quotidienne régionale](https://odre.opendatasoft.com/explore/dataset/temperature-quotidienne-regionale/) (2016-2024)
 - [éCO2mix régional temps réel](https://odre.opendatasoft.com/explore/dataset/eco2mix-regional-tr/) (pour mises à jour incrémentales)
 
+## Mise à Jour Incrémentale de l'Entrepôt
+
+### Principe
+
+Mise à jour incrémentale avec gestion du cycle : **temps_reel** → **consolidee** → **definitive**
+
+**Règle** : Pour une même date/région, la donnée avec le statut de priorité la plus élevée est conservée (definitive=3, consolidee=2, temps_reel=1).
+
+### Architecture
+
+```
+eco2mix-regional-tr.parquet
+    ↓
+stg_eco2mix_temps_reel (view)
+    ↓
+int_eco2mix_incremental (incremental) ← Agrégation journalière + gestion statuts
+    ↓
+fact_energie_quotidienne_incremental (incremental) ← Fusion avec données définitives
+```
+
+### Utilisation
+
+#### Première exécution
+```bash
+dbt run --select fact_energie_quotidienne_incremental --full-refresh
+```
+
+#### Mise à jour quotidienne
+```bash
+dbt run --select fact_energie_quotidienne_incremental
+```
+
+Ne traite que les nouvelles données (filtrage sur `date_integration`), gain ~30×.
+
+#### Exemple de transition de statut
+```
+Jour J   : 2025-01-15, Île-de-France, temps_reel, 5000 GWh
+Jour J+1 : 2025-01-15, Île-de-France, consolidee, 5100 GWh
+Résultat : La version consolidée remplace la version temps_reel
+```
+
+### Tests
+
+```sql
+-- Vérifier l'unicité
+SELECT date, code_insee_region, COUNT(*) 
+FROM {{ ref('fact_energie_quotidienne_incremental') }}
+GROUP BY date, code_insee_region
+HAVING COUNT(*) > 1
+```
+
+```bash
+dbt test --select fact_energie_quotidienne_incremental
+```
+
+### Monitoring
+
+```sql
+-- Distribution par statut
+SELECT statut_donnee, COUNT(*), MIN(date), MAX(date)
+FROM fact_energie_quotidienne_incremental
+GROUP BY statut_donnee;
+```
+
+### Composants
+
+- **sources.yml** : Déclaration de `eco2mix-regional-tr.parquet`
+- **stg_eco2mix_temps_reel.sql** : Nettoyage + ajout `statut_donnee` et `date_integration`
+- **int_eco2mix_incremental.sql** : Agrégation journalière avec gestion priorités
+- **fact_energie_quotidienne_incremental.sql** : Table de fait finale
+- **macros/incremental_helpers.sql** : Fonctions utilitaires
+
 ## Documentation complète
 
 Le sujet complet du TP est disponible dans [sujet_eco2mix_dbt_part2.md](sujet_eco2mix_dbt_part2.md).

@@ -14,3 +14,11 @@ sources:
     tables:
       - name: quotidienne_regionale
         description: "Température quotidienne par région"
+
+  - name: eco2mix_temps_reel
+    description: "Données temps réel eco2mix - mise à jour continue"
+    meta:
+      external_location: "models/data/eco2mix-regional-tr.parquet"
+    tables:
+      - name: regional_tr
+        description: "Consommation et production d'énergie régionale en temps réel"
